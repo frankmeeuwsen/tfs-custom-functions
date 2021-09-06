@@ -112,8 +112,8 @@ function twitter_auto_post($post)
     $post_id = $post->ID;
 
     // Check to see if this has already been Tweeted
-    // $posted = get_post_meta($post_id, 'social_twitter_posted', true);
-    $posted = false;
+    $posted = get_post_meta($post_id, 'social_twitter_posted', true);
+    // $posted = false;
 
     // If it hasn't previously been posted, create and post a Tweet:
     if ($posted != 'true') {
