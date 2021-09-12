@@ -116,7 +116,7 @@ function twitter_auto_post($post)
     // $posted = false;
 
     // If it hasn't previously been posted, create and post a Tweet:
-    if ($posted != 'true') {
+    if ($posted != 'true' && get_option('tfs_consumer_key')) {
 
         // Include Codebird library. Ensure this matches where you have saved it:
         require_once(get_stylesheet_directory() . '/includes/codebird/src/codebird.php');
@@ -170,6 +170,7 @@ function twitter_auto_post($post)
         }
     } else {
         // Tweet has already been posted. This will prevent it being posted again:
+        // show_message('This has been posted or you forgot the keys. Dummy');
         return;
     }
 }
@@ -235,7 +236,7 @@ function custom_toolbar_link($wp_admin_bar)
     $args = array(
         'id' => 'tfsdraft',
         'title' => 'Drafts',
-        'href' => 'edit.php?post_status=draft&post_type=newsletter',
+        'href' => 'https://thanksforsubscribing.app/wp-admin/edit.php?post_status=draft&post_type=newsletter&orderby=date&order=asc',
         'meta' => array(
             'class' => 'wpbeginner',
             'title' => 'Admin drafts of newsletters'
