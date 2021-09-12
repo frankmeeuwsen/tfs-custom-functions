@@ -142,6 +142,7 @@ function twitter_auto_post($post)
             'Here is the newest title on our site!',
             'We added a fresh newsletter to our collection 💌',
             'Need a cool title in your inbox? Check out this one!',
+            'Check out this fresh newsletter!',
             'Welcome to a new newsletter in our collection 💌',
             'Check this fresh newsletter 💌'
         ];
