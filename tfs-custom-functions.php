@@ -41,6 +41,7 @@
 
 add_action('admin_bar_menu', 'custom_toolbar_link', 999);
 add_action('transition_post_status', 'send_emails_on_new_event', 10, 3);
+add_action('transition_post_status', 'prepare_tweet_timer', 10, 3);
 // add_action( 'draft_to_publish', 'send_integromat_webhook', 10,1);
 // Enable random posts
 add_action('init', 'random_add_rewrite');
@@ -51,13 +52,11 @@ add_action('gform_after_submission', 'tfs_gf_after_submission', 10, 2);
 // Check if Substack entry, then add archive to the URL
 add_action('gform_after_submission', 'tfs_check_substack', 11, 2);
 
-// Autopost to Twitter after publish
-// Make this function run whenever it changes from any of these statuses to 'publish':
-// add_action('auto-draft_to_publish', 'twitter_auto_post', 10, 1);
-add_action('draft_to_publish', 'twitter_auto_post', 10, 1);
-// add_action('future_to_publish', 'twitter_auto_post', 10, 1);
-add_action('new_to_publish', 'twitter_auto_post', 10, 1);
-add_action('pending_to_publish', 'twitter_auto_post', 10, 1);
+    // Autopost to Twitter after publish
+    // Make this function run whenever it changes from any of these statuses to 'publish':
+    // add_action('draft_to_publish', 'twitter_auto_post', 10, 1);
+    // add_action('new_to_publish', 'twitter_auto_post', 10, 1);
+    // add_action('pending_to_publish', 'twitter_auto_post', 10, 1);
 
 // Add API keys to tools
 add_action('admin_menu', 'wpdocs_register_my_api_keys_page');
@@ -78,6 +77,9 @@ add_filter('acf/rest_api/field_settings/edit_in_rest', '__return_true');
 add_filter('walker_nav_menu_start_el', 'matomo_data_tracker', 10, 2);
 // Add data conversion thingis for the stats to Matomo. See if this works. 
 add_filter('nav_menu_link_attributes', 'matomo_data_tracker_original', 10, 3);
+
+// Add action to autpost every 15 minutes the latest new entry
+add_action('tfs_twitter_autopost', 'twitter_auto_post'); // 'tfs_twitter_autopost` is registered when the event is scheduled
 
 
 
@@ -105,8 +107,23 @@ function matomo_data_tracker($item_output, $item)
 }
 
 
-function twitter_auto_post($post)
+function twitter_auto_post()
 {
+
+    $args = array(
+        'posts_per_page' => 1,
+        'post_type'  => 'newsletter',
+        'meta_query' => array(
+            array(
+                // 'key'   => 'social_twitter_posted',
+                'key'   => 'social_twitter_timer',
+                'compare' => 'EXISTS'
+            )
+        )
+    );
+    $postslist = get_posts($args);
+
+    foreach ($postslist as $post) {
 
     // Get ID of the published post:
     $post_id = $post->ID;
@@ -130,6 +147,7 @@ function twitter_auto_post($post)
         \Codebird\Codebird::setConsumerKey($consumer_key, $consumer_secret);
         $cb = \Codebird\Codebird::getInstance();
         $cb->setToken($access_token, $access_token_secret);
+        // $cb->setReturnFormat(CODEBIRD_RETURNFORMAT_JSON);
 
         // Get data from the published post:
         $post_title = get_the_title($post_id);
@@ -165,6 +183,9 @@ function twitter_auto_post($post)
         if ($reply->httpstatus == 200) {
             // Add database entry showing that the Tweet was sucessful:
             add_post_meta($post_id, 'social_twitter_posted', 'true', true);
+            add_post_meta($post_id, 'social_twitter_status', json_encode($reply), true);
+            delete_post_meta($post_id, 'social_twitter_timer', 'true', true);
+            wp_mail('1996988851@incredibleadventure.nl', 'We tweeted it!', 'https://twitter.com/' . $reply->user->screen_name. '/status\/' .$reply->id);
         } else {
             // Add database entry showing error details if it wasn't successful:
             add_post_meta($post_id, 'social_twitter_posted', $reply->httpstatus, true);
@@ -175,7 +196,7 @@ function twitter_auto_post($post)
         return;
     }
 }
-
+}
 function tfs_check_substack($entry, $form)
 {
     $parent_post_id = get_post($entry['post_id'])->ID;
@@ -237,7 +258,7 @@ function custom_toolbar_link($wp_admin_bar)
     $args = array(
         'id' => 'tfsdraft',
         'title' => 'Drafts',
-        'href' => 'https://thanksforsubscribing.app/wp-admin/edit.php?post_status=draft&post_type=newsletter&orderby=date&order=asc',
+        'href' => admin_url('/edit.php?post_status=draft&post_type=newsletter&orderby=date&order=asc'),
         'meta' => array(
             'class' => 'wpbeginner',
             'title' => 'Admin drafts of newsletters'
@@ -254,7 +275,12 @@ function custom_search_button_text($text)
 // Send an email when a submitted newsletter is published
 function send_emails_on_new_event($new_status, $old_status, $post)
 {
-    $tfs_email = get_field('email_adres', $post->ID);
+    if (wp_get_environment_type() === 'production') {
+        $tfs_email = get_field('email_adres', $post->ID);
+    } else {
+        $tfs_email = "404463558@incredibleadventure.nl";
+    };
+    // $tfs_email = get_field('email_adres', $post->ID);
     $tfs_title = get_the_title($post->ID);
     $tfs_link = get_permalink($post->ID);
     $headers = 'From: Frank Meeuwsen <frank@thanksforsubscribing.app>';
@@ -276,6 +302,13 @@ Thanks for Subscribing
         wp_mail($tfs_email, 'Your newsletter is added to Thanks for Subscribing', $message, $headers);
     }
 };
+
+function prepare_tweet_timer($new_status, $old_status, $post){
+        if (('publish' === $new_status && 'publish' !== $old_status) && 'newsletter' === $post->post_type) {
+        add_post_meta($post->ID, 'social_twitter_timer', 'true', true);
+        }
+
+}
 
 function random_add_rewrite()
 {
@@ -338,6 +371,7 @@ function add_api_keys_callback()
         <h2>My Most Secret API Keys Page</h2>
         <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST">
             <h3>Les Twitter Credentials</h3>
+            <input type="text" name="tfs_twitter_account" placeholder="Enter accountname" value="<?php echo get_option('tfs_twitter_account'); ?>"><br />
             <input type="text" name="tfs_consumer_key" placeholder="Enter Consumer Key" value="<?php echo get_option('tfs_consumer_key'); ?>"><br />
             <input type="text" name="tfs_consumer_secret" placeholder="Enter Consumer Secret" value="<?php echo get_option('tfs_consumer_secret'); ?>"><br />
             <input type="text" name="tfs_access_token" placeholder="Enter Access Token" value="<?php echo get_option('tfs_access_token'); ?>"><br />
@@ -354,6 +388,7 @@ function add_api_keys_callback()
 function submit_api_key()
 {
     if (isset($_POST['tfs_consumer_key'])) {
+        $tfs_twitter_account = sanitize_text_field($_POST['tfs_twitter_account']);
         $tfs_consumer_key = sanitize_text_field($_POST['tfs_consumer_key']);
         $tfs_consumer_secret = sanitize_text_field($_POST['tfs_consumer_secret']);
         $tfs_access_token = sanitize_text_field($_POST['tfs_access_token']);
@@ -361,11 +396,17 @@ function submit_api_key()
 
         $tfs_consumer_key_exists = get_option('tfs_consumer_key');
         if (!empty($tfs_consumer_key) && !empty($tfs_consumer_key_exists)) {
+            if(empty($tfs_twitter_account)){
+                add_option('tfs_twitter_account', $tfs_twitter_account);
+            }else{
+                update_option('tfs_twitter_account', $tfs_twitter_account);
+            }
             update_option('tfs_consumer_key', $tfs_consumer_key);
             update_option('tfs_consumer_secret', $tfs_consumer_secret);
             update_option('tfs_access_token', $tfs_access_token);
             update_option('tfs_access_token_secret', $tfs_access_token_secret);
         } else {
+            add_option('tfs_twitter_account', $tfs_twitter_account);
             add_option('tfs_consumer_secret', $tfs_consumer_secret);
             add_option('tfs_consumer_key', $tfs_consumer_key);
             add_option('tfs_access_token', $tfs_access_token);
@@ -374,6 +415,5 @@ function submit_api_key()
     }
     wp_redirect($_SERVER['HTTP_REFERER']);
 }
-
 
 ?>
