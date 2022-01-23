@@ -81,8 +81,10 @@ add_filter('nav_menu_link_attributes', 'matomo_data_tracker_original', 10, 3);
 // Add action to autpost every 15 minutes the latest new entry
 add_action('tfs_twitter_autopost', 'twitter_auto_post'); // 'tfs_twitter_autopost` is registered when the event is scheduled
 
-
-
+if (wp_get_environment_type() !== 'production') {
+// Pre-populate the submit form when on dev
+add_filter('gform_field_value', 'tfs_prepop_form',10,3);
+}
 
 function matomo_data_tracker_original($atts, $item, $args)
 {
@@ -183,7 +185,7 @@ function twitter_auto_post()
         if ($reply->httpstatus == 200) {
             // Add database entry showing that the Tweet was sucessful:
             add_post_meta($post_id, 'social_twitter_posted', 'true', true);
-            add_post_meta($post_id, 'social_twitter_status', json_encode($reply), true);
+            add_post_meta($post_id, 'social_twitter_status', $reply->id, true);
             delete_post_meta($post_id, 'social_twitter_timer', 'true', true);
             wp_mail('1996988851@incredibleadventure.nl', 'We tweeted '. $post_title, 'https://twitter.com/ForSubscribing/status/' .$reply->id);
         } else {
@@ -414,6 +416,38 @@ function submit_api_key()
         }
     }
     wp_redirect($_SERVER['HTTP_REFERER']);
+}
+
+function tfs_prepop_form($value, $field, $name){
+    require_once(get_stylesheet_directory() . '/includes/Faker/src/autoload.php');
+    $faker = Faker\Factory::create('en_US');
+
+    // generate data by accessing properties
+    // echo $faker->text;
+    // echo $faker->safeEmail;
+    $random_title_postfix = array(
+        'Gazette',
+        'Newsletter',
+        'Weekly',
+        'Tells all'
+    );
+
+    $title_tfs = $faker->catchPhrase; 
+    $title_tfs .= ' '.$random_title_postfix[rand(0, count($random_title_postfix) - 1)];
+    $desc_tfs = $faker->realText(150);
+    $sub_tfs=$faker->url;
+
+    $values = array(
+        'title-tfs'   => $title_tfs,
+        'desc-tfs' => $desc_tfs,
+        'sub-tfs' => $sub_tfs,
+        'cat-tfs' => 4, //business
+        'lang-tfs' => 11, //english
+        'freq-tfs' => 3, //Weekly
+        'tfs-email'=>rand().'@incredibleadventure.nl'
+
+    );
+    return isset($values[$name]) ? $values[$name] : $value;
 }
 
 ?>
