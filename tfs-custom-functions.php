@@ -185,7 +185,7 @@ function twitter_auto_post()
             add_post_meta($post_id, 'social_twitter_posted', 'true', true);
             add_post_meta($post_id, 'social_twitter_status', json_encode($reply), true);
             delete_post_meta($post_id, 'social_twitter_timer', 'true', true);
-            wp_mail('1996988851@incredibleadventure.nl', 'We tweeted it!', 'https://twitter.com/' . $reply->user->screen_name. '\/status\/' .$reply->id);
+            wp_mail('1996988851@incredibleadventure.nl', 'We tweeted it!', 'https://twitter.com/ForSubscribing/status/' .$reply->id);
         } else {
             // Add database entry showing error details if it wasn't successful:
             add_post_meta($post_id, 'social_twitter_posted', $reply->httpstatus, true);
