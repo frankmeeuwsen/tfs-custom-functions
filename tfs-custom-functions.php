@@ -50,6 +50,10 @@ add_action('gform_after_submission', 'tfs_gf_after_submission', 10, 2);
 
 // Check if Substack entry, then add archive to the URL
 add_action('gform_after_submission', 'tfs_check_substack', 11, 2);
+// Check if Revue entry, then add archive to the URL
+add_action('gform_after_submission', 'tfs_check_revue', 11, 2);
+// Make sure the twitter formfield is just the handle
+add_filter("gform_save_field_value_1_18", "tfs_check_twitter", 10, 1);
 
     // Autopost to Twitter after publish
     // Make this function run whenever it changes from any of these statuses to 'publish':
@@ -203,13 +207,31 @@ function tfs_check_substack($entry, $form)
     $parent_post_id = get_post($entry['post_id'])->ID;
     $form_subscribeurl = $entry[5];
     $form_archiveurl = $entry[19];
+    if (!str_ends_with($form_subscribeurl, "/")) {
+        $archiveurl = '/';
+    }
+    $archiveurl .= 'archive';
 
     if (strpos($form_subscribeurl, 'substack') && empty($form_archiveurl)) {
-        update_field('example', $form_subscribeurl . '/archive', $parent_post_id);
+        update_field('example', $form_subscribeurl.$archiveurl, $parent_post_id);
     }
 }
 
-add_filter("gform_save_field_value_1_18", "tfs_check_twitter", 10, 1);
+function tfs_check_revue($entry, $form)
+{
+    $parent_post_id = get_post($entry['post_id'])->ID;
+    $form_subscribeurl = $entry[5];
+    $form_archiveurl = $entry[19];
+    if(!str_ends_with($form_subscribeurl, "/")){
+        $archiveurl ='/';
+    }
+    $archiveurl .= 'issues/latest';
+    if (strpos($form_subscribeurl, 'getrevue') && empty($form_archiveurl)) {
+        update_field('example', $form_subscribeurl.$archiveurl , $parent_post_id);
+    }
+}
+
+
 function tfs_check_twitter($value){
     // $parent_post_id = get_post($entry['post_id'])->ID;
     // $form_twitterurl = $field[18];
