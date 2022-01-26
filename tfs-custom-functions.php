@@ -209,10 +209,10 @@ function tfs_check_substack($entry, $form)
     }
 }
 
-add_filter("gform_save_field_value", "tfs_check_twitter", 10, 4);
-function tfs_check_twitter($value, $entry, $field, $form){
-    $parent_post_id = get_post($entry['post_id'])->ID;
-    $form_twitterurl = $entry[18];
+add_filter("gform_save_field_value_1_18", "tfs_check_twitter", 10, 1);
+function tfs_check_twitter($value){
+    // $parent_post_id = get_post($entry['post_id'])->ID;
+    // $form_twitterurl = $field[18];
     $new_value = str_replace('@', '', $value);
     return $new_value;
 }
@@ -462,7 +462,8 @@ function tfs_prepop_form($value, $field, $name){
         'cat-tfs' => 4, //business
         'lang-tfs' => 11, //english
         'freq-tfs' => 3, //Weekly
-        'tfs-email'=>rand().'@incredibleadventure.nl'
+        'tfs-email'=>rand().'@incredibleadventure.nl',
+        'logo-tfs'=> '/Users/fmeeuwsen/Documents/tempfiles/10kft-klbr.jpg'
 
     );
     return isset($values[$name]) ? $values[$name] : $value;
