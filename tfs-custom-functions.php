@@ -24,7 +24,6 @@
 // global $post;
 // $tfs_id = get_the_ID( $post->ID );
 // BugFu::log($post->ID);
-// do_action( 'qm/debug', $parent_post_id );
 // error_log(var_export($parent_post_id,1));
 // error_log(var_export($parts ,1));
 // error_log(var_export($form_fileurl ,1));
@@ -210,10 +209,21 @@ function tfs_check_substack($entry, $form)
     }
 }
 
+add_filter("gform_save_field_value", "tfs_check_twitter", 10, 4);
+function tfs_check_twitter($value, $entry, $field, $form){
+    $parent_post_id = get_post($entry['post_id'])->ID;
+    $form_twitterurl = $entry[18];
+    $new_value = str_replace('@', '', $value);
+    return $new_value;
+}
+
+
+// Check https://infinitesynergysolutions.com/learning-center/add-gravity-forms-file-uploads-and-image-uploads-to-the-media-library/ for solution
 
 function tfs_gf_after_submission($entry, $form)
 {
     $parent_post_id = get_post($entry['post_id'])->ID;
+
     $form_fileurl = $entry[15];
     // Check the type of file. We'll use this as the 'post_mime_type'.
     $filetype = wp_check_filetype(basename($form_fileurl), null);
@@ -228,7 +238,6 @@ function tfs_gf_after_submission($entry, $form)
     $fileurl = $wp_upload_dir['baseurl'] .
         '/' . $parts[1];
 
-
     // Prepare an array of post data for the attachment.
     $attachment = array(
         'guid' => $fileurl,
@@ -241,11 +250,20 @@ function tfs_gf_after_submission($entry, $form)
     // Insert the attachment.
     $attach_id = wp_insert_attachment($attachment, $filepath, $parent_post_id);
 
+
+
+    // do_action('qm/debug', '$parent_post_id:' . $parent_post_id);
+    // do_action('qm/debug', '$wp_upload_dir:' . $wp_upload_dir);
+    // do_action('qm/debug', '$filepath:' . $filepath);
+    // do_action('qm/debug', '$fileURL:' . $fileurl);
+    // do_action('qm/debug', '$attachment:' . $attachment);
+    
     //Image manipulations are usually an admin side function. Since Gravity Forms is a front of house solution, we need to include the image manipulations here.
     require_once(ABSPATH .
         'wp-admin/includes/image.php');
 
     // Generate the metadata for the attachment, and update the database record.
+    // Vraag is of ik alle images in uploads wil of kan het prima in gravityforms dir blijven...
     if ($attach_data = wp_generate_attachment_metadata($attach_id, $filepath)) {
         wp_update_attachment_metadata($attach_id, $attach_data);
     }
