@@ -55,16 +55,24 @@ add_action('gform_after_submission', 'tfs_check_revue', 11, 2);
 // Make sure the twitter formfield is just the handle
 add_filter("gform_save_field_value_1_18", "tfs_check_twitter", 10, 1);
 
-    // Autopost to Twitter after publish
-    // Make this function run whenever it changes from any of these statuses to 'publish':
-    // add_action('draft_to_publish', 'twitter_auto_post', 10, 1);
-    // add_action('new_to_publish', 'twitter_auto_post', 10, 1);
-    // add_action('pending_to_publish', 'twitter_auto_post', 10, 1);
+// Autopost to Twitter after publish
+// Make this function run whenever it changes from any of these statuses to 'publish':
+// add_action('draft_to_publish', 'twitter_auto_post', 10, 1);
+// add_action('new_to_publish', 'twitter_auto_post', 10, 1);
+// add_action('pending_to_publish', 'twitter_auto_post', 10, 1);
 
 // Add API keys to tools
 add_action('admin_menu', 'wpdocs_register_my_api_keys_page');
 add_action('admin_post_nopriv_process_form', 'submit_api_key');
 add_action('admin_post_process_form', 'submit_api_key');
+
+// Do Newsletter submit stuff in admin dashboard
+add_action('admin_menu', 'tfs_register_newsletter_submit');
+// add_action('wp_dashboard_setup', 'tfs_dashboard_widgets');
+add_action('admin_post_nopriv_process_newsletter_url_form', 'tfs_media_sideload');
+add_action('admin_post_process_newsletter_url_form', 'tfs_media_sideload');
+// add_action('admin_post_nopriv_process_newsletter_url_form', 'submit_newsletter_url_form');
+// add_action('admin_post_process_newsletter_url_form', 'submit_newsletter_url_form');
 
 
 // Make a custom text in the searchbar
@@ -85,8 +93,8 @@ add_filter('nav_menu_link_attributes', 'matomo_data_tracker_original', 10, 3);
 add_action('tfs_twitter_autopost', 'twitter_auto_post'); // 'tfs_twitter_autopost` is registered when the event is scheduled
 
 if (wp_get_environment_type() !== 'production') {
-// Pre-populate the submit form when on dev
-add_filter('gform_field_value', 'tfs_prepop_form',10,3);
+    // Pre-populate the submit form when on dev
+    add_filter('gform_field_value', 'tfs_prepop_form', 10, 3);
 }
 
 function matomo_data_tracker_original($atts, $item, $args)
@@ -130,77 +138,78 @@ function twitter_auto_post()
 
     foreach ($postslist as $post) {
 
-    // Get ID of the published post:
-    $post_id = $post->ID;
+        // Get ID of the published post:
+        $post_id = $post->ID;
 
-    // Check to see if this has already been Tweeted
-    $posted = get_post_meta($post_id, 'social_twitter_posted', true);
-    // $posted = false;
+        // Check to see if this has already been Tweeted
+        $posted = get_post_meta($post_id, 'social_twitter_posted', true);
+        // $posted = false;
 
-    // If it hasn't previously been posted, create and post a Tweet:
-    if ($posted != 'true' && get_option('tfs_consumer_key')) {
+        // If it hasn't previously been posted, create and post a Tweet:
+        if ($posted != 'true' && get_option('tfs_consumer_key')) {
 
-        // Include Codebird library. Ensure this matches where you have saved it:
-        require_once(get_stylesheet_directory() . '/includes/codebird/src/codebird.php');
-        // Set your keys. Get these from your created Twitter App:
-        $consumer_key = get_option('tfs_consumer_key');
-        $consumer_secret = get_option('tfs_consumer_secret');
-        $access_token = get_option('tfs_access_token');
-        $access_token_secret = get_option('tfs_access_token_secret');
-        
-        // Codebird setup:
-        \Codebird\Codebird::setConsumerKey($consumer_key, $consumer_secret);
-        $cb = \Codebird\Codebird::getInstance();
-        $cb->setToken($access_token, $access_token_secret);
-        // $cb->setReturnFormat(CODEBIRD_RETURNFORMAT_JSON);
+            // Include Codebird library. Ensure this matches where you have saved it:
+            require_once(get_stylesheet_directory() . '/includes/codebird/src/codebird.php');
+            // Set your keys. Get these from your created Twitter App:
+            $consumer_key = get_option('tfs_consumer_key');
+            $consumer_secret = get_option('tfs_consumer_secret');
+            $access_token = get_option('tfs_access_token');
+            $access_token_secret = get_option('tfs_access_token_secret');
 
-        // Get data from the published post:
-        $post_title = get_the_title($post_id);
-        $post_link = get_the_permalink($post_id);
-        $post_twitter = get_field('twitter', $post_id);
-        // error_log(var_export($post_twitter, 1));
+            // Codebird setup:
+            \Codebird\Codebird::setConsumerKey($consumer_key, $consumer_secret);
+            $cb = \Codebird\Codebird::getInstance();
+            $cb->setToken($access_token, $access_token_secret);
+            // $cb->setReturnFormat(CODEBIRD_RETURNFORMAT_JSON);
 
-        // Get one of the random really fun texts!
-        $intros_arr = [
-            'Here is the newest title on our site!',
-            'We added a fresh newsletter to our collection 💌',
-            'Need a cool title in your inbox? Check out this one!',
-            'Check out this fresh newsletter!',
-            'Welcome to a new newsletter in our collection 💌',
-            'Check this fresh newsletter 💌'
-        ];
-        shuffle($intros_arr);
+            // Get data from the published post:
+            $post_title = get_the_title($post_id);
+            $post_link = get_the_permalink($post_id);
+            $post_twitter = get_field('twitter', $post_id);
+            // error_log(var_export($post_twitter, 1));
 
-        // Compose a status using the gathered data:
-        $status =  $intros_arr[0] . ' ' . $post_title . ' ';
-        if ($post_twitter) {
-            $status .=  'by @' . $post_twitter . ' ';
-        }
+            // Get one of the random really fun texts!
+            $intros_arr = [
+                'Here is the newest title on our site!',
+                'We added a fresh newsletter to our collection 💌',
+                'Need a cool title in your inbox? Check out this one!',
+                'Check out this fresh newsletter!',
+                'Welcome to a new newsletter in our collection 💌',
+                'We are proud to present a new newsletter in our collection 💌',
+                'Check this fresh newsletter 💌'
+            ];
+            shuffle($intros_arr);
 
-        $status .= $post_link;
+            // Compose a status using the gathered data:
+            $status =  $intros_arr[0] . ' ' . htmlentities($post_title) . ' ';
+            if ($post_twitter) {
+                $status .=  'by @' . $post_twitter . ' ';
+            }
 
-        // Send Tweet with image and status:
-        $reply = $cb->statuses_update(array(
-            'status'    => $status,
-        ));
+            $status .= $post_link;
 
-        // Check status of Tweet submission:
-        if ($reply->httpstatus == 200) {
-            // Add database entry showing that the Tweet was sucessful:
-            add_post_meta($post_id, 'social_twitter_posted', 'true', true);
-            add_post_meta($post_id, 'social_twitter_status', $reply->id, true);
-            delete_post_meta($post_id, 'social_twitter_timer', 'true', true);
-            wp_mail('1996988851@incredibleadventure.nl', 'We tweeted '. $post_title, 'https://twitter.com/ForSubscribing/status/' .$reply->id);
+            // Send Tweet with image and status:
+            $reply = $cb->statuses_update(array(
+                'status'    => $status,
+            ));
+
+            // Check status of Tweet submission:
+            if ($reply->httpstatus == 200) {
+                // Add database entry showing that the Tweet was sucessful:
+                add_post_meta($post_id, 'social_twitter_posted', 'true', true);
+                add_post_meta($post_id, 'social_twitter_status', $reply->id, true);
+                delete_post_meta($post_id, 'social_twitter_timer', 'true', true);
+                wp_mail('1996988851@incredibleadventure.nl', 'We tweeted ' . $post_title, 'https://twitter.com/ForSubscribing/status/' . $reply->id);
+            } else {
+                // Add database entry showing error details if it wasn't successful:
+                add_post_meta($post_id, 'social_twitter_posted', $reply->httpstatus, true);
+            }
         } else {
-            // Add database entry showing error details if it wasn't successful:
-            add_post_meta($post_id, 'social_twitter_posted', $reply->httpstatus, true);
+            // Tweet has already been posted. This will prevent it being posted again:
+            // show_message('This has been posted or you forgot the keys. Dummy');
+            return;
         }
-    } else {
-        // Tweet has already been posted. This will prevent it being posted again:
-        // show_message('This has been posted or you forgot the keys. Dummy');
-        return;
     }
-}
 }
 function tfs_check_substack($entry, $form)
 {
@@ -213,7 +222,7 @@ function tfs_check_substack($entry, $form)
     $archiveurl .= 'archive';
 
     if (strpos($form_subscribeurl, 'substack') && empty($form_archiveurl)) {
-        update_field('example', $form_subscribeurl.$archiveurl, $parent_post_id);
+        update_field('example', $form_subscribeurl . $archiveurl, $parent_post_id);
     }
 }
 
@@ -222,17 +231,18 @@ function tfs_check_revue($entry, $form)
     $parent_post_id = get_post($entry['post_id'])->ID;
     $form_subscribeurl = $entry[5];
     $form_archiveurl = $entry[19];
-    if(!str_ends_with($form_subscribeurl, "/")){
-        $archiveurl ='/';
+    if (!str_ends_with($form_subscribeurl, "/")) {
+        $archiveurl = '/';
     }
     $archiveurl .= 'issues/latest';
     if (strpos($form_subscribeurl, 'getrevue') && empty($form_archiveurl)) {
-        update_field('example', $form_subscribeurl.$archiveurl , $parent_post_id);
+        update_field('example', $form_subscribeurl . $archiveurl, $parent_post_id);
     }
 }
 
 
-function tfs_check_twitter($value){
+function tfs_check_twitter($value)
+{
     // $parent_post_id = get_post($entry['post_id'])->ID;
     // $form_twitterurl = $field[18];
     $new_value = str_replace('@', '', $value);
@@ -279,7 +289,7 @@ function tfs_gf_after_submission($entry, $form)
     // do_action('qm/debug', '$filepath:' . $filepath);
     // do_action('qm/debug', '$fileURL:' . $fileurl);
     // do_action('qm/debug', '$attachment:' . $attachment);
-    
+
     //Image manipulations are usually an admin side function. Since Gravity Forms is a front of house solution, we need to include the image manipulations here.
     require_once(ABSPATH .
         'wp-admin/includes/image.php');
@@ -345,11 +355,11 @@ Thanks for Subscribing
     }
 };
 
-function prepare_tweet_timer($new_status, $old_status, $post){
-        if (('publish' === $new_status && 'publish' !== $old_status) && 'newsletter' === $post->post_type) {
+function prepare_tweet_timer($new_status, $old_status, $post)
+{
+    if (('publish' === $new_status && 'publish' !== $old_status) && 'newsletter' === $post->post_type) {
         add_post_meta($post->ID, 'social_twitter_timer', 'true', true);
-        }
-
+    }
 }
 
 function random_add_rewrite()
@@ -438,9 +448,9 @@ function submit_api_key()
 
         $tfs_consumer_key_exists = get_option('tfs_consumer_key');
         if (!empty($tfs_consumer_key) && !empty($tfs_consumer_key_exists)) {
-            if(empty($tfs_twitter_account)){
+            if (empty($tfs_twitter_account)) {
                 add_option('tfs_twitter_account', $tfs_twitter_account);
-            }else{
+            } else {
                 update_option('tfs_twitter_account', $tfs_twitter_account);
             }
             update_option('tfs_consumer_key', $tfs_consumer_key);
@@ -458,7 +468,8 @@ function submit_api_key()
     wp_redirect($_SERVER['HTTP_REFERER']);
 }
 
-function tfs_prepop_form($value, $field, $name){
+function tfs_prepop_form($value, $field, $name)
+{
     require_once(get_stylesheet_directory() . '/includes/Faker/src/autoload.php');
     $faker = Faker\Factory::create('en_US');
 
@@ -472,10 +483,10 @@ function tfs_prepop_form($value, $field, $name){
         'Tells all'
     );
 
-    $title_tfs = $faker->catchPhrase; 
-    $title_tfs .= ' '.$random_title_postfix[rand(0, count($random_title_postfix) - 1)];
+    $title_tfs = $faker->catchPhrase;
+    $title_tfs .= ' ' . $random_title_postfix[rand(0, count($random_title_postfix) - 1)];
     $desc_tfs = $faker->realText(150);
-    $sub_tfs=$faker->url;
+    $sub_tfs = $faker->url;
 
     $values = array(
         'title-tfs'   => $title_tfs,
@@ -484,11 +495,73 @@ function tfs_prepop_form($value, $field, $name){
         'cat-tfs' => 4, //business
         'lang-tfs' => 11, //english
         'freq-tfs' => 3, //Weekly
-        'tfs-email'=>rand().'@incredibleadventure.nl',
-        'logo-tfs'=> '/Users/fmeeuwsen/Documents/tempfiles/10kft-klbr.jpg'
+        'tfs-email' => rand() . '@incredibleadventure.nl',
+        'logo-tfs' => '/Users/fmeeuwsen/Documents/tempfiles/10kft-klbr.jpg'
 
     );
     return isset($values[$name]) ? $values[$name] : $value;
 }
+
+function tfs_register_newsletter_submit()
+{
+    add_menu_page(
+        'Newsletter Submit',
+        'Newsletter Submit',
+        'manage_options',
+        'tfs-newsletter-submit',
+        'tfs_dashboard_add_url',
+        'dashicons-email-alt',
+        10
+    );
+}
+
+
+
+function tfs_dashboard_add_url()
+{
+?>
+    <h3>Get this Newsletter URL</h3>
+    <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST">
+        <input type="text" name="newsletter_url" placeholder="Enter URL" value="">
+        <?php submit_button('Get it', 'large', 'submit'); ?>
+
+        <!-- <input type="submit" name="submit" id="submit" class="update-button button button-primary" value="Get URL" /> -->
+        <input type="hidden" name="action" value="process_newsletter_url_form">
+
+    </form>
+<?php
+}
+
+
+function tfs_media_sideload(){
+    $post_id = '5809';
+    // add the admin notice
+    $admin_notice = "success";
+    return $admin_notice;
+    // redirect the user to the appropriate page
+    // wp_redirect($admin_notice, $_POST);
+    exit;
+
+}
+// Submit functionality
+function submit_newsletter_url_form()
+{
+    echo 'DONE!';
+    if (isset($_POST['newsletter_url'])) {
+        $tfs_newsletter_url = sanitize_text_field($_POST['newsletter_url']);
+        include_once('tfs_newsletter_scrape.php');
+        if (isset($newsletter_title)) {
+            echo '<h1>' . $newsletter_title[0] . '</h1>';
+
+            echo '<p>' . $newsletter_desc[0] . '</p>';
+            echo '<p><a href="' . $newsletter_subscribe[0] . '">' . $newsletter_subscribe[0] . '</a></p>';
+            echo '<p>Twitter: ' . $newsletter_twitter[0] . '</p>';
+            echo '<p><img src="' . $newsletter_icon[0] . '"></p>';
+        }
+    }
+    // wp_redirect($_SERVER['HTTP_REFERER']);
+    //  Klooien met https://wpmudev.com/blog/handling-form-submissions/ 
+}
+
 
 ?>
