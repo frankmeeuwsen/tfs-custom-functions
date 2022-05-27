@@ -38,6 +38,12 @@
 // 	die;
 // }
 
+
+add_filter('wp_mail_smtp_custom_options', function ($phpmailer) {
+    $phpmailer->AuthType = 'LOGIN';
+    return $phpmailer;
+});
+
 add_action('admin_bar_menu', 'custom_toolbar_link', 999);
 add_action('transition_post_status', 'send_emails_on_new_event', 10, 3);
 add_action('transition_post_status', 'prepare_tweet_timer', 10, 3);
